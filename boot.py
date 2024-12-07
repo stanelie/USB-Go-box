@@ -1,6 +1,7 @@
-import usb_hid, usb_midi
+import usb_hid, usb_midi, usb_cdc
 import supervisor
 import storage
+import board, digitalio
 
 supervisor.set_usb_identification(manufacturer="Ex Machina", product="USB Go Box")
 usb_hid.disable()
@@ -12,3 +13,10 @@ m = storage.getmount("/")
 m.label = "usb_go_box"
 storage.remount("/", readonly=True)
 storage.enable_usb_drive()
+
+button = digitalio.DigitalInOut(board.GP29)
+button.pull = digitalio.Pull.DOWN
+
+if not button.value:
+#    storage.disable_usb_drive()
+#    usb_cdc.disable()
