@@ -3,6 +3,7 @@ import board
 import digitalio
 import usb_midi
 import adafruit_midi
+import neopixel
 
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
@@ -10,6 +11,10 @@ from adafruit_midi.note_off import NoteOff
 midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=0)
 
 print("Default output MIDI channel:", midi.out_channel + 1)
+
+pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, pixel_order=neopixel.RGB) # onboard neopixel
+pixel.brightness = 1
+pixel.fill((5,0,0))
 
 # A BUTTON
 button_pinA = board.GP6
@@ -65,61 +70,76 @@ while True:
         midi.send(NoteOn(44, 120))
         print("A pressed")
         buttonA_pressed = True
+        pixel.fill((0,0,255))
     elif buttonA.value and buttonA_pressed:
         midi.send(NoteOff(44, 120))
         print("A released")
         buttonA_pressed = False
+        pixel.fill((0,0,0))
     
     if not buttonB.value and not buttonB_pressed:
         midi.send(NoteOn(45, 120))
         print("B pressed")
         buttonB_pressed = True
+        pixel.fill((0,0,255))
     elif buttonB.value and buttonB_pressed:
         midi.send(NoteOff(45, 120))
         print("B released")
         buttonB_pressed = False
+        pixel.fill((0,0,0))
     
     if not buttonC.value and not buttonC_pressed:
         midi.send(NoteOn(46, 120))
         print("C pressed")
         buttonC_pressed = True
+        pixel.fill((0,0,255))
     elif buttonC.value and buttonC_pressed:
         midi.send(NoteOff(46, 120))
         print("C released")
         buttonC_pressed = False
+        pixel.fill((0,0,0))
 
     if not buttonPREV.value and not buttonPREV_pressed:
         midi.send(NoteOn(47, 120))
         print("PREV pressed")
         buttonPREV_pressed = True
+        pixel.fill((255,100,0))
     elif buttonPREV.value and buttonPREV_pressed:
         midi.send(NoteOff(47, 120))
         print("PREV released")
         buttonPREV_pressed = False
+        pixel.fill((0,0,0))
         
     if not buttonSTOP.value and not buttonSTOP_pressed:
         midi.send(NoteOn(48, 120))
         print("STOP pressed")
         buttonSTOP_pressed = True
+        pixel.fill((255,0,0))
     elif buttonSTOP.value and buttonSTOP_pressed:
         midi.send(NoteOff(48, 120))
         print("STOP released")
         buttonSTOP_pressed = False
+        pixel.fill((0,0,0))
 
     if not buttonNEXT.value and not buttonNEXT_pressed:
         midi.send(NoteOn(49, 120))
         print("NEXT pressed")
         buttonNEXT_pressed = True
+        pixel.fill((255,100,0))
     elif buttonNEXT.value and buttonNEXT_pressed:
         midi.send(NoteOff(49, 120))
         print("NEXT released")
         buttonNEXT_pressed = False
+        pixel.fill((0,0,0))
 
     if not buttonGO.value and not buttonGO_pressed:
         midi.send(NoteOn(50, 120))
         print("GO pressed")
         buttonGO_pressed = True
+        pixel.fill((0,255,0))
     elif buttonGO.value and buttonGO_pressed:
         midi.send(NoteOff(50, 120))
         print("GO released")
         buttonGO_pressed = False
+        pixel.fill((0,0,0))
+
