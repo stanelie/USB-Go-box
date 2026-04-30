@@ -4,142 +4,76 @@ import digitalio
 import usb_midi
 import adafruit_midi
 import neopixel
-
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 
+# --- CONFIGURATION ---
+DEBOUNCE_TIME = 0.05  # 50ms lockout
 midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=0)
 
-print("Default output MIDI channel:", midi.out_channel + 1)
+pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, pixel_order=neopixel.RGB)
+pixel.brightness = 0.5
+pixel.fill((5, 0, 0)) 
 
-pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, pixel_order=neopixel.RGB) # onboard neopixel
-pixel.brightness = 1
-pixel.fill((5,0,0))
+BUTTON_CONFIGS = [
+    (board.GP6, 44, (0, 0, 255), "A"),
+    (board.GP2, 45, (0, 0, 255), "B"),
+    (board.GP0, 46, (0, 0, 255), "C"),
+    (board.GP5, 47, (255, 100, 0), "PREV"),
+    (board.GP3, 48, (255, 0, 0), "STOP"),
+    (board.GP1, 49, (255, 100, 0), "NEXT"),
+    (board.GP4, 50, (0, 255, 0), "GO"),
+]
 
-# A BUTTON
-button_pinA = board.GP6
-buttonA = digitalio.DigitalInOut(button_pinA)
-buttonA.direction = digitalio.Direction.INPUT
-buttonA.pull = digitalio.Pull.UP
-buttonA_pressed = False
+buttons = []
+for pin, note, color, name in BUTTON_CONFIGS:
+    io = digitalio.DigitalInOut(pin)
+    io.direction = digitalio.Direction.INPUT
+    io.pull = digitalio.Pull.UP
+    buttons.append({
+        "io": io,
+        "note": note,
+        "color": color,
+        "name": name,
+        "active_pressed": False, 
+        "last_press_time": 0      
+    })
 
-# B BUTTON
-button_pinB = board.GP2
-buttonB = digitalio.DigitalInOut(button_pinB)
-buttonB.direction = digitalio.Direction.INPUT
-buttonB.pull = digitalio.Pull.UP
-buttonB_pressed = False
-
-# C BUTTON
-button_pinC = board.GP0
-buttonC = digitalio.DigitalInOut(button_pinC)
-buttonC.direction = digitalio.Direction.INPUT
-buttonC.pull = digitalio.Pull.UP
-buttonC_pressed = False
-
-# PREV BUTTON
-button_pinPREV = board.GP5
-buttonPREV = digitalio.DigitalInOut(button_pinPREV)
-buttonPREV.direction = digitalio.Direction.INPUT
-buttonPREV.pull = digitalio.Pull.UP
-buttonPREV_pressed = False
-
-# STOP BUTTON
-button_pinSTOP = board.GP3
-buttonSTOP = digitalio.DigitalInOut(button_pinSTOP)
-buttonSTOP.direction = digitalio.Direction.INPUT
-buttonSTOP.pull = digitalio.Pull.UP
-buttonSTOP_pressed = False
-
-# NEXT BUTTON
-button_pinNEXT = board.GP1
-buttonNEXT = digitalio.DigitalInOut(button_pinNEXT)
-buttonNEXT.direction = digitalio.Direction.INPUT
-buttonNEXT.pull = digitalio.Pull.UP
-buttonNEXT_pressed = False
-
-# GO BUTTON
-button_pinGO = board.GP4
-buttonGO = digitalio.DigitalInOut(button_pinGO)
-buttonGO.direction = digitalio.Direction.INPUT
-buttonGO.pull = digitalio.Pull.UP
-buttonGO_pressed = False
+print("MIDI Go Box Initialized - LED Hold Enabled")
 
 while True:
-    if not buttonA.value and not buttonA_pressed:
-        midi.send(NoteOn(44, 120))
-        print("A pressed")
-        buttonA_pressed = True
-        pixel.fill((0,0,255))
-    elif buttonA.value and buttonA_pressed:
-        midi.send(NoteOff(44, 120))
-        print("A released")
-        buttonA_pressed = False
-        pixel.fill((0,0,0))
+    current_time = time.monotonic()
     
-    if not buttonB.value and not buttonB_pressed:
-        midi.send(NoteOn(45, 120))
-        print("B pressed")
-        buttonB_pressed = True
-        pixel.fill((0,0,255))
-    elif buttonB.value and buttonB_pressed:
-        midi.send(NoteOff(45, 120))
-        print("B released")
-        buttonB_pressed = False
-        pixel.fill((0,0,0))
-    
-    if not buttonC.value and not buttonC_pressed:
-        midi.send(NoteOn(46, 120))
-        print("C pressed")
-        buttonC_pressed = True
-        pixel.fill((0,0,255))
-    elif buttonC.value and buttonC_pressed:
-        midi.send(NoteOff(46, 120))
-        print("C released")
-        buttonC_pressed = False
-        pixel.fill((0,0,0))
+    # We'll use this to decide if the pixel should be cleared
+    any_button_active = False
 
-    if not buttonPREV.value and not buttonPREV_pressed:
-        midi.send(NoteOn(47, 120))
-        print("PREV pressed")
-        buttonPREV_pressed = True
-        pixel.fill((255,100,0))
-    elif buttonPREV.value and buttonPREV_pressed:
-        midi.send(NoteOff(47, 120))
-        print("PREV released")
-        buttonPREV_pressed = False
-        pixel.fill((0,0,0))
-        
-    if not buttonSTOP.value and not buttonSTOP_pressed:
-        midi.send(NoteOn(48, 120))
-        print("STOP pressed")
-        buttonSTOP_pressed = True
-        pixel.fill((255,0,0))
-    elif buttonSTOP.value and buttonSTOP_pressed:
-        midi.send(NoteOff(48, 120))
-        print("STOP released")
-        buttonSTOP_pressed = False
-        pixel.fill((0,0,0))
+    for btn in buttons:
+        is_physically_pressed = not btn["io"].value
+        time_since_press = current_time - btn["last_press_time"]
 
-    if not buttonNEXT.value and not buttonNEXT_pressed:
-        midi.send(NoteOn(49, 120))
-        print("NEXT pressed")
-        buttonNEXT_pressed = True
-        pixel.fill((255,100,0))
-    elif buttonNEXT.value and buttonNEXT_pressed:
-        midi.send(NoteOff(49, 120))
-        print("NEXT released")
-        buttonNEXT_pressed = False
-        pixel.fill((0,0,0))
+        # --- PRESS LOGIC ---
+        if is_physically_pressed and not btn["active_pressed"]:
+            if time_since_press > DEBOUNCE_TIME:
+                midi.send(NoteOn(btn["note"], 120))
+                btn["active_pressed"] = True
+                btn["last_press_time"] = current_time
+                pixel.fill(btn["color"])
+                print(f"MIDI Send: {btn['name']}")
 
-    if not buttonGO.value and not buttonGO_pressed:
-        midi.send(NoteOn(50, 120))
-        print("GO pressed")
-        buttonGO_pressed = True
-        pixel.fill((0,255,0))
-    elif buttonGO.value and buttonGO_pressed:
-        midi.send(NoteOff(50, 120))
-        print("GO released")
-        buttonGO_pressed = False
-        pixel.fill((0,0,0))
+        # --- RELEASE LOGIC ---
+        elif not is_physically_pressed and btn["active_pressed"]:
+            midi.send(NoteOff(btn["note"], 120))
+            btn["active_pressed"] = False
+            print(f"MIDI Release: {btn['name']}")
 
+        # --- LED PERSISTENCE LOGIC ---
+        # If a button was recently pressed (within debounce window) 
+        # or is still being held down, we keep the "active" flag up.
+        if btn["active_pressed"] or (time_since_press < DEBOUNCE_TIME):
+            any_button_active = True
+
+    # If no buttons are held AND the debounce window has passed for all...
+    if not any_button_active:
+        # Reset to dim red (idle state)
+        if pixel[0] != (5, 0, 0):
+            pixel.fill((0, 0, 0)) # Or (5,0,0) if you want the idle glow
